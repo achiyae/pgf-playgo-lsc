@@ -14,4 +14,5 @@ D. Harel and R. Marelly, "Come, Let's Play: Scenario-Based Programming Using LSC
 http://www.wisdom.weizmann.ac.il/~playbook/Updates/ComeLetsPlay.pdf
 
 The PlayGo homepage: http://wiki.weizmann.ac.il/playgo/index.php/Main_Page
+
 The PlayGo userguide: https://weizmann.box.com/s/irjrbvlipdol1vm64v0kf7uju00lqzn1
