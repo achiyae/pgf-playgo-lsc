@@ -1,0 +1,772 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Start of pgf-playgo-lsc.sty
+%
+% Some macros for PlayGo Live Sequence Chart.
+% The project repository: http://pgf-playgo-lsc.googlecode.com/
+% Author: Achiya Elyasaf
+%
+% History:
+% v0.1 2008/01/25 first release at 
+%
+
+\NeedsTeXFormat{LaTeX2e}[1999/12/01]
+\ProvidesPackage{pgf-playgo-lsc}[2017/01/17 v0.1 Some LaTeX macros for PlayGo Live Sequence Chart.]
+
+\RequirePackage{tikz}
+\usetikzlibrary{arrows,calc,shapes.symbols,math,positioning}
+\RequirePackage{pgfkeys}
+\RequirePackage{ifthen}
+%\RequirePackage{makecell}
+\RequirePackage{varwidth}
+
+% Options
+% ? the instance box with rounded corners ?
+\newif\ifpgfumlsdroundedcorners\pgfumlsdroundedcornersfalse
+\DeclareOption{roundedcorners}{\pgfumlsdroundedcornerstrue}
+\DeclareOption{roundedcorners=true}{\pgfumlsdroundedcornerstrue}
+\DeclareOption{roundedcorners=false}{\pgfumlsdroundedcornersfalse}
+\ProcessOptions
+
+% new counters
+\newcounter{preinst}
+\newcounter{instnum}
+\newcounter{seqlevel} % level
+\newcounter{blocklevel}
+\newcounter{lifelineslistcounter}
+\newlength{\tableLength}
+
+%\def\calclineshift[#1]#2{\pgfmathsetmacro{\lineshift}{{#1-#2*0.035146}}}
+\def\ctx@key#1{/tikz/pics/context/#1}
+\tikzset{
+	clip even odd rule/.code={\pgfseteorule}, % Credit to Andrew Stacey 
+	invclip/.style={
+		draw,clip,insert path=
+		[clip even odd rule]{
+			[reset cm](-\maxdimen,-\maxdimen)rectangle(\maxdimen,\maxdimen)
+		}
+	},
+	pics/context/.is family, pics/context,
+	sq/.style={draw=black},
+	fc/.style={white,draw=black},
+	fw/.style={white,draw=black},
+	.default={0.112}{\pgflinewidth}{},
+	.style n args={4}{%
+		code={%
+			\begin{scope}[inner sep=2mm, outer sep=0, shift={(-6*#1,-4*#1)},
+				evaluate={
+					real \scale, \shifline, \elementsspace, \picIheight, \rowIskip, \picIIwidth, 
+					\picIIheight, \picIIIwidth,  \picIIskip;
+					\scale=#1;
+					\shiftline=#2;
+					\elementsspace=0.5;
+					\picIheight=4;
+					\rowIskip=\scale*(\picIheight-0.4-0.6-\shiftline/2+\elementsspace);
+					\picIIwidth=12/3-\elementsspace/2;
+					\picIIIwidth=2*12/3-\elementsspace/2;
+					\picIIheight=2.8;
+					\picIIskip=\scale*(\picIIwidth+\elementsspace);
+%					print{$\pgflinewidth t,aa,\shiftline$};
+				}]
+				\path coordinate(line begin)coordinate(curser);
+				\draw(curser)pic{context/context 1={\scale}{\shiftline}{#3}{\elementsspace}};
+				\path(line begin)++(0,-\rowIskip)coordinate(line begin)coordinate(curser);
+				\draw(curser)pic{context/context 
+				2={\scale}{\shiftline}{\picIIwidth}{\picIIheight}};
+				\path(curser)++(\picIIskip,0)coordinate(curser);
+				\draw(curser)pic{context/context 3=
+					{\scale}{\shiftline}{\picIIIwidth}{\picIIheight}{\elementsspace}};
+			\end{scope}
+		}
+	},
+	context 1/.style n args={4}{%
+		foreground code={%
+			\def\yscale{#1}
+			\edef\shiftline{0.5*#2pt/\scale}
+			\edef\rowspace{#4}
+			\tikzset{xscale=\yscale,yscale=\yscale}
+%			\tikzmath{print{$\pgflinewidth,aa,\shiftline$};}
+			\clip([shift={(0,\shiftline)}]7,0)rectangle(12,-2);
+			\fill[\ctx@key{fc}](10,-0.4)circle(.6);
+		},
+		code={%
+			\def\yscale{#1}
+			\edef\shiftline{0.5*#2pt/\scale}
+			\edef\rowspace{#4}
+			\tikzset{xscale=\yscale,yscale=\yscale}
+			\clip([shift={(-\shiftline,-\shiftline)}]0,0) rectangle 
+			([shift={(\shiftline,\shiftline)}]12,4);
+			\draw[\ctx@key{sq}](0,0)rectangle(12,4)node[pos=.5] {#3};
+			\fill[\ctx@key{fw}](2,0.4-\rowspace)
+								circle(0.6+\rowspace);
+		},
+	},
+	context 2/.style n args={4}{%
+		foreground code={%
+			\def\yscale{#1}
+			\edef\shiftline{0.5*#2pt/\scale}
+			\edef\width{#3}
+			\edef\height{#4}
+			\tikzset{xscale=\yscale,yscale=\yscale}
+			\begin{scope}
+				\clip([shift={(0,-\shiftline)}]1,\height)rectangle (3,10);
+				\fill[\ctx@key{fc}](2,\height+0.4)circle(.6);				
+			\end{scope}
+			\begin{scope}
+				\clip([shift={(-\shiftline,0)}]\width,0)rectangle 
+				(\width+2,\height);
+				\fill[\ctx@key{fc}](\width+0.4,\height/2)circle(.6);
+			\end{scope}
+		},%
+		code={%
+			\def\yscale{#1}
+			\edef\shiftline{0.5*#2pt/\scale}
+			\edef\width{#3}
+			\edef\height{#4}
+			\tikzset{xscale=\yscale,yscale=\yscale}
+			\clip([shift={(-\shiftline,-\shiftline)}]0,0) rectangle 
+			([shift={(\shiftline,\shiftline)}]\width,\height);
+			\draw[\ctx@key{sq}](0,0)rectangle(\width,\height);
+		},
+	},
+	context 3/.style n args={5}{%
+		foreground code={%
+			\def\yscale{#1}
+			\edef\shiftline{0.5*#2pt/\scale}
+			\edef\width{#3}
+			\edef\height{#4}
+			\edef\elementsspace{#4}
+			\tikzset{xscale=\yscale,yscale=\yscale}
+		},%
+		code={%
+			\def\yscale{#1}
+			\edef\shiftline{0.5*#2pt/\scale}
+			\edef\width{#3}
+			\edef\height{#4}
+			\tikzset{xscale=\yscale,yscale=\yscale}
+			\clip([shift={(-\shiftline,-\shiftline)}]0,0) rectangle 
+			([shift={(\shiftline,\shiftline)}]\width,\height);
+			\draw[\ctx@key{sq}](0,0) rectangle(\width,\height);
+			\fill[\ctx@key{fw}](0.4-\elementsspace,\height/2)circle
+								(0.6+\elementsspace);
+			\fill[\ctx@key{fw}](0.4-\elementsspace,\height/2)circle
+								(0.6);
+			\fill[\ctx@key{fw}](\width-2, \height-0.4+\elementsspace)circle
+								(0.6+\elementsspace);
+			\fill[\ctx@key{fw}](\width-2, \height-0.4+\elementsspace)circle
+								(0.6);
+		},
+	},
+}
+
+\tikzset{
+	pics/clock/.default={0.22}{9}{25}{5},
+	pics/clock/.style n args={4}{
+		code={
+			\def\scale{#1}
+			\def\hour{#2}
+			\def\minutes{#3}
+			\def\seconds{#4}			
+%			\pgftransformscale{\scale}			
+			\filldraw [fill=white] (0,0) circle (2cm*\scale);
+%			\foreach \angle / \label in
+%			{0/3, 30/2, 60/1, 90/12, 120/11, 150/10, 180/9,
+%				210/8, 240/7, 270/6, 300/5, 330/4}
+%			{
+%				\draw[line width=\scale*1pt] (\angle:1.8cm) -- (\angle:2cm);
+%				\draw (\angle:1.4cm) node[scale=\scale]{\textsf{\label}};
+%			}
+%			\foreach \angle in {0,90,180,270}
+%			\draw[line width=\scale*2pt] (\angle:1.6cm) -- (\angle:2cm);
+%			\node[draw=none,font=\tiny,text=red,scale=\scale] at (0,.9cm) {};
+			\draw[rotate=90,line width=\scale*2.1pt] (0,0) -- 
+			(-\hour*30-\minutes*30/60:1.0cm*\scale); % hours
+			\draw[rotate=90,line width=\scale*1.6pt] (0,0) -- (-\minutes*6:1.4cm*\scale); % minutes
+			\draw[rotate=90,line width=\scale*.7pt,red] (0,0) -- (-\seconds*6:1.5cm*\scale); % 
+			%seconds
+%			\path [fill=black] (0,0) circle (3pt);
+%			\path [fill=red] (0,0) circle (1.5pt);
+%			\coordinate (.east) at (0,3);
+		}
+	}
+}
+
+% new a clock lifeline
+% Example:
+% \newclocklifeline[edge distance]
+\newcommand{\newclocklifeline}[1][0.3]{%
+	\stepcounter{instnum}
+	\path 
+		  (inst\thepreinst.north east)+(#1,0) node [anchor=north west, minimum
+		  height=0.8cm, minimum width=0.7cm, inner sep=1mm, outer 
+		  sep=0, align=left] 
+		  (inst\theinstnum){\vphantom{Bptgl}}
+		  (inst\theinstnum) pic  {clock};
+	\path (inst\theinstnum)+(0.1,-0.5*\unitfactor) node (clock) {};
+	\tikzstyle{instcolorclock}=[]
+	\stepcounter{preinst}
+}	
+
+
+\pgfkeys{
+	/lifeline/.is family, /lifeline,
+	% Here are the options that a user can pass
+	default/.style = 
+	{edge distance = 0.2,
+	 type = static
+	},
+	type/.store in = \lifelineType\#2,
+	edge distance/.store in = \lifelineEdgeDistance\#2,
+}
+% new a lifeline
+% Example:
+% \newlifeline[]{variable name}{text}
+\newcommand{\newlifeline}[3][]{%
+  \pgfkeys{/lifeline, default, #1}%
+  \stepcounter{instnum}
+  \ifthenelse{\equal{\lifelineType\#2}{static}}
+  	{\edef\style{}}
+  	{\edef\style{dashed}}
+  \path (inst\thepreinst.north east)+(\lifelineEdgeDistance\#2,0) node[\style,inststyle] 
+  (inst\theinstnum)
+  {\vphantom{Bptgl}#3};
+  \path (inst\theinstnum)+(0,-0.5*\unitfactor) node (#2) {};
+  \tikzstyle{instcolor#2}=[]
+  \stepcounter{preinst}
+}
+
+ % new an context lifeline
+ % Example:
+ % \newcontext[edge distance]{variable name}{text}{var}{name:class}
+ \newcommand{\newcontextlifeline}[3][0.3]{%
+ 	\stepcounter{instnum}
+ 	\path 
+	 	(inst\thepreinst.north east)+(#1,0) node[contextstyle] 
+	 	(inst\theinstnum)
+	 	{\vphantom{Bptgl}}
+	 	(inst\theinstnum.north) pic {context={0.1096}{\pgflinewidth}{#3}};%0.1095
+ 	\path (inst\theinstnum)+(0,-0.5*\unitfactor) node (#2) {};
+ 	\tikzstyle{instcolor#2}=[]
+ 	\stepcounter{preinst}
+ }
+
+% message between threads
+% Example:
+% \mess[delay]{sender}{message content}{receiver}{color}{line type}
+\newcommand{\mess}[6][0]{%
+  \stepcounter{seqlevel}
+  \addtocounter{seqlevel}{#1}
+  \ifthenelse{\equal{#2}{#4}}
+  {	  
+	  \path
+	  (#2)+(0,-\theseqlevel*\unitfactor-0.5*\unitfactor) node (mess from) {};
+	  \path (mess from)+(0,-0.5*\unitfactor) node (mess to) {};
+	  \draw[draw=#5,#6,->,>=triangle 60] (mess from) -- ++(0.8,0)
+	  node[near start, above, yshift=-3pt] {{#3}} -- ++(0,-0.5*\unitfactor)
+	  -- (mess to); 	  
+	  \stepcounter{seqlevel}
+  }
+  {  
+	  \path
+	  (#2)+(0,-\theseqlevel*\unitfactor-0.5*\unitfactor) node (mess from) {};
+	  \path
+	  (#4)+(0,-\theseqlevel*\unitfactor-0.5*\unitfactor) node (mess to) {};
+	  \draw[draw=#5,#6,->,>=angle 60] (mess from) -- (mess to) node[midway, above, yshift=-1pt]
+	  {{#3}};
+  }
+  \node ({#3} from) at (mess from) {};
+  \node ({#3} to) at (mess to) {};
+}
+
+\newcommand{\invisiblemess}[2]{%
+  \path (#1)+(0,-\theseqlevel*\unitfactor-0.7*\unitfactor) node (mess from) {};
+  \path (#2)+(0,-\theseqlevel*\unitfactor-0.7*\unitfactor) node (mess to) {};
+}
+
+\newcommand{\coldmonitor}[4][0]{%
+  \mess[#1]{#2}{#3}{#4}{blue}{dashed}
+}
+
+\newcommand{\hotmonitor}[4][0]{%
+  \mess[#1]{#2}{#3}{#4}{red}{dashed}
+}
+
+\newcommand{\coldexecute}[4][0]{%
+  \mess[#1]{#2}{#3}{#4}{blue}{solid}
+}
+
+\newcommand{\hotexecute}[4][0]{%
+  \mess[#1]{#2}{#3}{#4}{red}{solid}
+}
+
+\pgfkeys{
+	/contextelement/.is family, /contextelement,
+	% Here are the options that a user can pass
+	default/.style = 
+	{type = all,
+	 edge distance = -0.7,
+ 	},
+	type/.store in = \contextElementType\theblocklevel,
+	edge distance/.store in = \contextElementEdgeDistance\theblocklevel,
+}
+
+% a context
+% usage:
+% \begin{context}[options]{context-name}{context-parameters}
+% \end{context}
+%
+% Options:
+% type = <all,start,end>
+% edge distance=-0.3
+%
+\newenvironment{context}[3][]{%
+  \pgfkeys{/contextelement, default, #1}%
+  \stepcounter{seqlevel}
+  \ifthenelse{\equal{\contextElementType\theblocklevel}{end}}
+  {
+  	\stepcounter{seqlevel}
+  	\stepcounter{blocklevel} % push
+  	\coordinate (blockbeg\theblocklevel) at   
+  	(0,-\theseqlevel*\unitfactor-\unitfactor-\headerheight);  	
+  }
+  {
+	  \stepcounter{blocklevel} % push
+	  \coordinate (blockbeg\theblocklevel) at   
+	  (0,-\theseqlevel*\unitfactor-\unitfactor-\headerheight);
+	  \stepcounter{seqlevel} % adds space inside the block.
+  }
+  \def\blockcolor\theblocklevel{lightgray}
+  \def\blockname\theblocklevel{Context: #2}
+  \def\blockwhere\theblocklevel{Parameters: #3}
+  \begin{pgfinterruptboundingbox}
+}{
+  \coordinate (blockend) at (0,-\theseqlevel*\unitfactor-2*\unitfactor-\headerheight);
+  \path (current bounding box.east)+(0.1,0) node (boxeast) {}
+  (current bounding box.west |- {blockbeg\theblocklevel}) + 
+  (\contextElementEdgeDistance\theblocklevel,0)
+  node (nw) {};
+  \path (boxeast |- blockend) node (se) {};  
+
+  % % title
+  \node[blockstyle] (blocktitle) at (nw) {\blockname\theblocklevel};  
+  \coordinate (nww) at (nw |- blocktitle.south);
+  \node[blockstyle] (blockwhere) at (nww) {\blockwhere\theblocklevel};
+
+  \coordinate (se) at (current bounding box.south east);
+  \coordinate (sw) at (nw |- se);
+  \coordinate (ne) at (nw -| se);
+  \coordinate (set) at (blocktitle.south -| se);  
+  \draw[fill=\blockcolor\theblocklevel](set) rectangle (nw);
+  \node[blockstyle] (blocktitle) at (nw) {\vphantom{gt}\blockname\theblocklevel};
+  \coordinate (sew) at (blockwhere.south -| se);  
+  \draw[fill=\blockcolor\theblocklevel](sew) rectangle (nww);
+  \node[blockstyle] (blockwhere) at (nww) {\vphantom{gt}\blockwhere\theblocklevel};
+  \end{pgfinterruptboundingbox}
+  
+  \ifthenelse{\equal{\contextElementType\theblocklevel}{all}}
+  {
+	\draw (se) rectangle (nw);
+  }
+  {
+	\coordinate (nw) at (nw)+(-0.2,-0.2);
+	\ifthenelse{\equal{\contextElementType\theblocklevel}{start}}
+	{
+		\path 
+			(sw) + (0, 0.1) node (sw) {}		
+			(se) + (0, 0.1) node (se) {};
+		\path
+			(sw) + (0, -0.3) node (smw) {}			
+			(se) + (0, -0.3) node (sme) {};
+		\draw (sw) -- (nw) -- (ne) -- (se);
+		\draw[densely dotted] (smw) -- (nw) -- (ne) -- (sme);
+%		\draw[dotted] (se) -- (sme);
+	}
+	{		
+		\addtocounter{seqlevel}{-1}
+		\path 
+			(nw) + (0,0.5*\unitfactor) node (nmw) {}
+			(nw) + (0,1*\unitfactor) node (nw) {}
+			(ne) + (0,0.5*\unitfactor) node (nme) {}
+			(ne) + (0,1*\unitfactor) node (ne) {};
+		\draw (nmw) -- (sw);
+		\draw (se) -- (nme);
+		\draw[densely dotted] (nw) -- (sw);
+		\draw[densely dotted] (ne) -- (se);		
+		\stepcounter{seqlevel}
+	}
+  } 
+
+  \addtocounter{blocklevel}{-1} % pop
+  \stepcounter{seqlevel}
+}
+
+
+\pgfkeys{
+	/subframeelement/.is family, /subframeelement,
+	% Here are the options that a user can pass
+	default/.style = 
+	{edge distance = 0},
+	edge distance/.store in = \subframeEdgeDistance\theblocklevel,
+}
+
+% a subframe
+% usage:
+% \begin{subframe}[options]{name}
+% \end{subframe}
+%
+% Options:
+% edge distance=-0.3
+%
+\newenvironment{subframe}[2][]{%
+	\pgfkeys{/subframeelement, default, #1}%
+	\stepcounter{seqlevel}
+	\stepcounter{blocklevel} % push
+	\coordinate (blockbeg\theblocklevel) at   
+	(0,-\theseqlevel*\unitfactor-\unitfactor-\headerheight);
+%	\stepcounter{seqlevel} % adds space inside the block.
+	\def\blockcolor\theblocklevel{lightgray}
+	\def\blockname\theblocklevel{#2}
+	\begin{pgfinterruptboundingbox}
+	}{
+		\coordinate (blockend) at (0,-\theseqlevel*\unitfactor-2*\unitfactor-\headerheight);
+		\path (current bounding box.east) node (boxeast) {}
+		(current bounding box.west |- {blockbeg\theblocklevel}) node (nw) {};
+		\path (boxeast |- blockend) node (se) {};  
+		
+		% % title
+		\node[blockstyle] (blocktitle) at (nw) {\blockname\theblocklevel};  		
+%		\node[blockstyle] (blockwhere) at (nww) {\blockwhere\theblocklevel};
+		
+		\coordinate (se) at (current bounding box.south east);
+		\coordinate (sw) at (nw |- se);
+		\coordinate (ne) at (nw -| se);
+		\coordinate (set) at (blocktitle.south -| se);  
+		\draw[fill=\blockcolor\theblocklevel,draw=black](set) rectangle (nw);
+		\node[blockstyle] (blocktitle) at (nw) {\vphantom{gt}\blockname\theblocklevel};
+%		\coordinate (sew) at (blockwhere.south -| se);  
+%		\draw[fill=\blockcolor\theblocklevel](sew) rectangle (nww);
+%		\node[blockstyle] (blockwhere) at (nww) {\vphantom{gt}\blockwhere\theblocklevel};
+	\end{pgfinterruptboundingbox}
+	
+	\draw (se) rectangle (nw);	
+	\addtocounter{blocklevel}{-1} % pop
+	\stepcounter{seqlevel}
+}
+
+%% \begin{alternative}{title}
+%% %%calls here
+%% \end{alternative}
+\newenvironment{alternative}[1]{%
+	\stepcounter{blocklevel} % push
+	\coordinate (blockbeg\theblocklevel) at   
+	(0,-\theseqlevel*\unitfactor-\unitfactor-\headerheight);
+	%	\stepcounter{seqlevel} % adds space inside the block.
+	\def\blockcolor\theblocklevel{lightgray}
+	\def\blockname\theblocklevel{#1}
+	\begin{pgfinterruptboundingbox}
+	}{
+		\coordinate (nw) at (nw |- blocktitle.south);
+		\node[blockstyle] (blocktitle) at (nw) {\blockname\theblocklevel};  
+		\coordinate (blockend) at (0,-\theseqlevel*\unitfactor-2*\unitfactor-\headerheight);
+		\path (current bounding box.east) node (boxeast) {}
+		(current bounding box.west |- {blockbeg\theblocklevel}) node (nw) {};
+		\path (boxeast |- blockend) node (se) {};  
+		
+		% % title
+		
+		\coordinate (se) at (current bounding box.south east);
+		\coordinate (sw) at (nw |- se);
+		\coordinate (ne) at (nw -| se);
+		\coordinate (set) at (blocktitle.south -| se);  
+		%\draw[fill=\blockcolor\theblocklevel,draw=black](sew) rectangle (nw);
+		%\node[blockstyle] (blocktitle) at (nw) {\vphantom{gt}\blockname\theblocklevel};
+	\end{pgfinterruptboundingbox}
+	
+%	\draw (se)+(-0.1,0) rectangle (sw);	
+	\addtocounter{blocklevel}{-1} % pop
+}
+
+% usage: \contextstart[options]{context-name}{context-parameters}{comma separeted list of 
+%    lifelines}
+% Options:
+% edge distance=-0.3
+\newcommand{\contextstart}[4][]{%
+	\contextstartend[#1]{#2}{#3}{#4}{type=start}
+}
+% usage: \contextend[options]{context-name}{context-parameters}{comma separeted list of 
+%    lifelines}
+\newcommand{\contextend}[4][]{%
+	\contextstartend[#1]{#2}{#3}{#4}{type=end}
+}
+
+% context start
+% usage:
+% \contextstartend[options]{context-name}{context-parameters}{comma separeted list of 
+%    lifelines}{type=start/end}
+% Options:
+% edge distance=-0.3
+\newcommand{\contextstartend}[5][]{%
+	\processlifelines{#4}
+
+	\ifthenelse{\equal{\thelifelineslistcounter}{0}}
+	{
+		\PackageError{pgf-playgo-lsc}{No lifelines}{}
+	}
+	{
+		\begin{context}[#5,#1]{#2}{#3}			
+			\@for\tmp:=\lifelineslist\do{
+				\invisiblemess{\firstlifelineslist}{\tmp}
+			}
+		\end{context}
+	}
+}
+
+% \assignemt[delay]{comma separeted instances, as ordered on screen}{text}
+\newcommand{\assignment}[3][0]{%
+	\processlifelines{#2}
+	\ifthenelse{\equal{\thelifelineslistcounter}{0}}
+	{
+		\PackageError{pgf-playgo-lsc}{No lifelines}{}
+	}
+	{	
+		%		\PackageWarning{pgf-playgo-lsc}{first-\firstlifelineslist,last-\lastlifelineslist}
+		\stepcounter{seqlevel}
+		\path
+		(\firstlifelineslist)+(-0.5,-\theseqlevel*\unitfactor-0.5*\unitfactor) node 
+		(assignment from){};
+		\path
+		(\lastlifelineslist)+(0.4,-\theseqlevel*\unitfactor-0.5*\unitfactor) node (assignment 
+		to) {};
+		\draw(assignment from)+(0,-0.4cm) rectangle (assignment to)
+		node[midway]{{#3}};
+		\stepcounter{seqlevel}
+	}
+}
+
+\pgfkeys{
+	/hexagonElement/.is family, /hexagonElement,
+	% Here are the options that a user can pass
+	default/.style = 
+	{delay = 0, edge distance = 0.4, title=},
+	delay/.store in = \delay,
+	edge distance/.store in = \edgeDistance,
+	title/.store in = \hexagonTitle,
+}
+
+% draw hexagon
+% Example:
+% \hexagon[delay]{comma separeted instances, as ordered on screen}{text}{line color}{line type}
+\newcommand{\hexagon}[5][]{%
+	\pgfkeys{/hexagonElement, default, #1}%
+	\processlifelines{#2}
+	\ifthenelse{\equal{\thelifelineslistcounter}{0}}
+	{
+		\PackageError{pgf-playgo-lsc}{No lifelines}{}
+	}
+	{	
+%		\PackageWarning{pgf-playgo-lsc}{first-\firstlifelineslist,last-\lastlifelineslist}
+		\stepcounter{seqlevel}
+		\tikzmath{
+			coordinate \p;
+			real \d;
+			\p = (\lastlifelineslist)-(\firstlifelineslist);
+			\d1 = \px+\edgeDistance*\cmpt;
+			\d2 = (width("\hexagonTitle")+depth("\hexagonTitle"));
+			\d3 = \d1-\d2;
+		}
+		\newcolumntype{M}{>{\begin{varwidth}{\d3 pt}}l<{\end{varwidth}}} %M is for Maximal column
+		\def\textTable{\begin{tabular}{@{}p{\d2 pt}@{}M@{}}
+				\hexagonTitle & #3
+			\end{tabular}}
+		\settoheight{\tableLength}{\textTable}
+		\path
+			let
+				\n1 = {\tableLength}
+			in
+			(\firstlifelineslist)+(-\edgeDistance,-\theseqlevel*\unitfactor-0.5*\unitfactor)
+			 node (hex1){}
+			(hex1)+(0.3,\n1) node (hex2){}
+			(hex1)+(0.3,-\n1) node (hex6){}
+			(\lastlifelineslist)+(\edgeDistance,-\theseqlevel*\unitfactor-0.5*\unitfactor) node 
+			(hex4){}
+			(hex4)+(-0.3,\n1) node (hex3){}
+			(hex4)+(-0.3,-\n1) node (hex5){};
+		\addtocounter{seqlevel}{\delay}
+		\draw[draw=#4,#5] (hex1.center) -- (hex2.center) -- (hex3.center) -- (hex4.center) -- 
+		(hex5.center) -- (hex6.center) -- (hex1.center);
+		\path (hex1) -- (hex4) node[pos=0.5]{\textTable};
+		\addtocounter{seqlevel}{1}
+	}
+}
+
+% draw sync
+% Example:
+% \sync[delay]{comma separeted instances, as ordered on screen}
+\newcommand{\sync}[2][]{%
+	\hexagon[#1]{#2}{\centering SYNC}{blue}{densely dashed}
+}
+
+% \wait[delay]{comma separeted instances, as ordered on screen}{condition}{line color}{line type}
+\newcommand{\wait}[5][]{%
+%	\hexagon[#1]{#2}{\begin{tabularx}{p{0.5cm}l}wait:& #3\end{tabularx}}{#4}{#5}
+%	\hexagon[#1]{#2}{\makecell[l]{wait: #3}}{#4}{#5}
+	\edef\waitTitle{wait:\hskip 6pt\relax}
+	\hexagon[#1,title=\waitTitle{}]{#2}{#3}{#4}{#5}
+}
+
+\newcommand{\forbid}[2][]{%
+	\hexagon[#1]{#2}{\centering Forbid}{red}{densely dashed}
+}
+
+\newcommand{\processlifelines}[1]{%
+	\xdef\firstlifelineslist{}
+	\xdef\lastlifelineslist{}
+	\xdef\lifelineslist{#1}
+	\setcounter{lifelineslistcounter}{0}
+	
+	\@for\tmp:=\lifelineslist\do{
+		\stepcounter{lifelineslistcounter}
+		\xdef\lastlifelineslist{\tmp}
+		\ifthenelse{\equal{\thelifelineslistcounter}{1}}
+		{
+			\xdef\firstlifelineslist{\tmp}
+		}{}		
+%		\PackageWarning{pgf-playgo-lsc}{first - \firstlifelineslist, last - \lastlifelineslist}
+	}
+}
+
+\pgfkeys{
+	/contextlsc/.is family, /contextlsc,
+	% Here are the options that a user can pass
+	default/.style = 
+	{title width = l,
+	 node height = 0.8cm},
+	title width/.store in = \contextlscWidth,
+	node height/.store in = \contextlscNodeHeight,
+}
+
+\newcommand{\createheader}[1]{%
+	\begin{tabular}{@{} p{35px} @{} #1 @{}}
+		\titleof\header
+	\end{tabular}
+}%
+
+% an LSC diagram with a name
+% \begin{LSCnameddiagram}{name}
+% \end{LSCnameddiagram}
+\newenvironment{LSCnameddiagram}[2][]{%
+\begin{LSCcontextualdiagram}[{#1}]{{#2}}{}{}%
+}%
+{%
+\end{LSCcontextualdiagram}%
+}
+
+% a contextual LSC diagram.
+% if you want to pass a parameter with a new line - write \protect\\ instead of \\
+% 
+% \begin{LSCnameddiagram}[]{name}{contexts}{where}
+% \end{LSCnameddiagram}
+\newenvironment{LSCcontextualdiagram}[4][]{%a
+	\pgfkeys{/contextlsc, default, #1}%
+	%\PackageWarning{pgf-playgo-lsc}{width=\contextlscWidth}
+	\def\name\header{\textbf{Name:} & \linespread{1}\selectfont #2\\}%
+	\def\contexts\header{\textbf{Context:} & \linespread{1}\selectfont #3\\}%
+	\def\where\header{\textbf{Where:} & \linespread{1}\selectfont #4\\}%
+	\ifthenelse{\equal{\unexpanded{#3}}{}}%
+	{\def\titleof\header{\name\header}}%
+	{\ifthenelse{\equal{\unexpanded{#4}}{}}%
+	{\def\titleof\header{\name\header\\\contexts\header}}%
+	{\def\titleof\header{\name\header\\\contexts\header\\\where\header}}}%
+	\begin{LSCdiagram}[\contextlscNodeHeight]%
+		\node [blockstyle, align=left] (header) at 
+		(-0.2,0) {\expandafter\createheader\expandafter{\contextlscWidth}};
+		\coordinate (seh) at (header.south -| current bounding box.east);
+		\coordinate (swh) at (header.south -| current bounding box.west);
+		\path
+		let
+			\p1 = (header.north -| current bounding box.west),
+			\p2 = (header.south -| current bounding box.west),
+			\n1 = {\y1-\y2}
+		in
+			\pgfextra						
+				\pgfmathsetmacro{\incm}{\n1*\ptcm + 0.2}
+				\pgfmathsetmacro{\lifelinesstart}{-\incm + 0.6}
+				\xdef\headerheight{\incm} 
+	%			\PackageWarning{pgf-playgo-lsc}{name is #1. n1 is \n1, incm is \incm, height is 
+	%			\headerheight. \lifelinesstart}
+			\endpgfextra				
+			coordinate (swh) at (swh);
+	% origin
+	\node[blockstyle,below of=header,coordinate](inst0) at ($(-0.2,-\headerheight+1)$) 
+	{};
+}%
+{%
+	\end{LSCdiagram}%
+}
+
+% PRIVATE! the environment of sequence diagram
+\newenvironment{LSCdiagram}[1][0.8cm]{%
+%   declare layers
+	\pgfdeclarelayer{umlsd@background}%
+	\pgfdeclarelayer{umlsd@titlelayer}%
+	\pgfdeclarelayer{umlsd@threadlayer}%
+	\pgfsetlayers{umlsd@background,umlsd@titlelayer,umlsd@threadlayer,main}%
+	\pgfmathsetmacro{\cmpt}{28.45274}%convert from cm to pt; 1 cm is 28.45274 pt
+	\pgfmathsetmacro{\ptcm}{0.035146}%convert from pt to cm; 1 pt is 1/28.4527 cm
+	\tikzmath{%
+	 	function nodeheight(\n) {
+	 		let \fakeText="Bptgl";
+	 		let \fakeParamLine=\backslash\backslash[-6pt]{\backslash scriptsize \fakeText};
+	%  		return max(height("Bptgl")+depth("Bptgl")+2mm,\n);
+	 		\titleHeight=max(height(\fakeText)+depth(\fakeText)+0.2mm,\n);
+	 		return \titleHeight;
+	% 		\paramLineHeight=height(\fakeParamLine)+depth(\fakeParamLine);
+	% 		if \n<2 then {
+	% 			return \titleHeight;
+	% 		} else {
+	% 			return \titleHeight+(\n-1)*\paramLineHeight;
+	% 		};
+	 	};
+	%    \nodeheight=nodeheight(1);
+	%    print { \newnodeheight };
+	}%
+\begin{tikzpicture}%
+	\linespread{0.5}\selectfont
+	\setlength{\unitlength}{1cm}
+	\tikzstyle{sequence}=[coordinate]
+	\tikzstyle{inststyle}=[rectangle, draw, anchor=north west, minimum width=0.5cm, inner sep=1mm, 
+	outer sep=0, fill=white, align=center,minimum height=nodeheight(#1)]
+	\tikzstyle{clockstyle}=[anchor=mid west, align=left]
+	\tikzstyle{contextstyle}=[anchor=north west, minimum height=nodeheight(#1), minimum 
+	width=1.3cm, inner sep=1mm, outer sep=0, align=left]
+	\ifpgfumlsdroundedcorners
+	\tikzstyle{inststyle}+=[rounded corners=3mm]
+	\fi
+	\tikzstyle{blockstyle}=[anchor=north west]
+	\tikzstyle{blockcommentstyle}=[anchor=north west, font=\small]
+	\tikzstyle{dot}=[inner sep=0pt,fill=black,circle,minimum size=0.2pt]
+	\global\def\unitfactor{0.6}
+	\global\def\threadbias{center}
+	\global\def\headerheight{0}
+	\global\def\firstlifelineslist{}
+	\global\def\lastlifelineslist{}
+	\global\def\listtlifelineslist{}
+	% reset counters
+	\setcounter{preinst}{0}
+	\setcounter{instnum}{0}
+	\setcounter{seqlevel}{0}
+	\setcounter{blocklevel}{0}	
+}%
+{%
+	\begin{pgfonlayer}{umlsd@background}
+	\ifnum\c@instnum > 0
+	\foreach \t [evaluate=\t] in {1,...,\theinstnum}{
+	\draw[dotted] (inst\t) -- ++(0,-\theseqlevel*\unitfactor-1.8*\unitfactor);
+	}
+	\fi
+	\end{pgfonlayer}
+	\draw (current bounding box.north east) + (0.3,0) rectangle (current bounding box.south west);
+	\draw (swh) -- (current bounding box.east |- seh) + (0,0);
+\end{tikzpicture}}
+
+%%% End of pgf-playgo-lsc.sty
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
